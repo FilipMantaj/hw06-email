@@ -1,25 +1,44 @@
-const express = require('express')
-const logger = require('morgan')
-const cors = require('cors')
+const express = require("express");
+const logger = require("morgan");
+const cors = require("cors");
+const path = require("path");
+const createError = require("http-errors");
+require("./passport");
+require("dotenv").config();
+const {
+  upload,
+  createFolderIfNotExist,
+  tempDir,
+  storeImage,
+} = require("./middlewares/upload");
+const apiRouter = require("./routes/api/index-routes");
+const app = express();
 
-const contactsRouter = require('./routes/api/contacts')
+const formatsLogger = app.get("env") === "development" ? "dev" : "short";
 
-const app = express()
+app.use(logger(formatsLogger));
+app.use(cors());
+app.use(express.json());
+app.use("/api", apiRouter);
 
-const formatsLogger = app.get('env') === 'development' ? 'dev' : 'short'
+app.use(express.static(path.join(__dirname, "public")));
 
-app.use(logger(formatsLogger))
-app.use(cors())
-app.use(express.json())
+createFolderIfNotExist(tempDir);
+createFolderIfNotExist(storeImage);
 
-app.use('/api/contacts', contactsRouter)
-
-app.use((req, res) => {
-  res.status(404).json({ message: 'Not found' })
-})
+app.use((req, res, next) => {
+  next(createError(404));
+});
 
 app.use((err, req, res, next) => {
-  res.status(500).json({ message: err.message })
-})
+  res.status(err.status || 500);
+  res.json({ message: err.message, status: err.status });
+});
 
-module.exports = app
+module.exports = {
+  app,
+  createFolderIfNotExist,
+  tempDir,
+  storeImage,
+  upload,
+};
